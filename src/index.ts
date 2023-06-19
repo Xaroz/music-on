@@ -1,11 +1,11 @@
-import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
+import app from './app';
+
 dotenv.config();
 
-// Set up Express app
-const app = express();
+// Set up server
 const port = process.env.PORT || 3000;
 
 const DB = process.env.MONGODB_URL
@@ -24,11 +24,6 @@ mongoose
   .catch((error) => {
     console.error('Error connecting to MongoDB:', error);
   });
-
-// Define a sample route
-app.get('/', (req, res) => {
-  res.send('Hello, World!');
-});
 
 // Start the server
 app.listen(port, () => {
