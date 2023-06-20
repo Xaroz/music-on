@@ -4,6 +4,7 @@ import jwt, { Secret } from 'jsonwebtoken';
 import User, { IUser } from '../models/userModel';
 import asyncWrapper from '../utils/asyncWrapper';
 import AppError from '../utils/appError';
+import {IRequestWithUser} from '../types/request';
 
 
 const signToken = (id: string): string => {
@@ -74,10 +75,20 @@ const logout = (req: Request, res: Response): void => {
   res.status(200).json({ status: 'success' });
 }
 
+const restrictTo = (...roles: string[]) => {
+  return (req: IRequestWithUser, res: Response, next: NextFunction): void => {
+    if (!roles.includes(req.user.role)) {
+      throw new AppError('You do not have permission to perform this action', 403);
+    }
+    next();
+  }
+}
+
 const authController = {
   signUp,
   login,
-  logout
+  logout,
+  restrictTo
 }
 
 export default authController

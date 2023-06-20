@@ -14,7 +14,7 @@ export interface IUser extends Document {
   passwordResetToken: string;
   passwordResetExpires: Date;
   active: boolean;
-  type: string;
+  role: string;
 }
 
 interface IUserMethods extends Model<IUser> {
@@ -53,11 +53,12 @@ const userSchema = new Schema<IUser, UserModel>({
     required: [true, 'Please confirm your password!'],
     // validate: {
     //   validator: function (value: string): boolean {
+    //     return value === this.password;
     //     return value === this.get('password');
     //   },
     //   message: 'Passwords are not the same!',
     // } 
-    // This keeps throwing an error. that this is not a function. I don't know why TS doesn't recognize this value of a document
+    // This keeps throwing an error. that this is not a function. I don't know why TS doesn't recognize this value being a document, tried using the get method but it still doesn't work
   },
   passwordChangedAt: Date,
   passwordResetToken: String,
@@ -67,14 +68,14 @@ const userSchema = new Schema<IUser, UserModel>({
     default: true,
     select: false,
   },
-  type: {
+  role: {
     type: String,
     enum: ['user', 'artist', 'admin'],
     default: 'user',
   },
 });
 
-// Middleware
+// ==================Middleware==================
 
 userSchema.pre<IUser>("save", function(next) {
   // Unlike in the validator function, here this points to the document that is about to be saved
@@ -99,7 +100,7 @@ userSchema.pre<IUser>("save", function(next) {
   next();
 });
 
-// Instance methods
+//==================Instance methods==================
 
 userSchema.methods.correctPassword = async function(candidatePassword: string, userPassword: string): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, userPassword);
