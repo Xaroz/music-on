@@ -5,20 +5,30 @@ import { promisify } from 'util';
 import User, { IUser, UserRoles } from '../models/userModel';
 import asyncWrapper from '../utils/asyncWrapper';
 import AppError from '../utils/appError';
-import {IRequestWithUser} from '../types/request';
+import { IRequestWithUser } from '../types/request';
 import { DAY_IN_MILISECONDS, RuntimeEnv, JWT_COOKIE } from '../constants';
 
-const signToken = (id: string): string => jwt.sign({ id }, process.env.JWT_SECRET as Secret, {
+const signToken = (id: string): string =>
+  jwt.sign({ id }, process.env.JWT_SECRET as Secret, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 
-const createSendToken = (user: IUser, statusCode: number, res: Response): void => {
+const createSendToken = (
+  user: IUser,
+  statusCode: number,
+  res: Response
+): void => {
   const token = signToken(user._id);
   const cookieOptions: CookieOptions = {
-    expires: new Date(Date.now() + (parseInt(process.env.JWT_COOKIE_EXPIRES_IN || '9', 10) * DAY_IN_MILISECONDS)),
+    expires: new Date(
+      Date.now() +
+        parseInt(process.env.JWT_COOKIE_EXPIRES_IN || '9', 10) *
+          DAY_IN_MILISECONDS
+    ),
     httpOnly: true,
-  }
-  if (process.env.NODE_ENV === RuntimeEnv.PRODUCTION) cookieOptions.secure = true;
+  };
+  if (process.env.NODE_ENV === RuntimeEnv.PRODUCTION)
+    cookieOptions.secure = true;
 
   res.cookie(JWT_COOKIE, token, cookieOptions);
 
@@ -30,40 +40,46 @@ const createSendToken = (user: IUser, statusCode: number, res: Response): void =
     token,
     data: {
       user,
-    }
-  })
-}
-
-
-const signUp = asyncWrapper(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { name, email, password, passwordConfirm } = req.body;
-  if (!name || !email || !password || !passwordConfirm) {
-    return next(new AppError('Please provide email and password', 400));
-  }
-
-  const newUser = await User.create({
-    name,
-    email,
-    password,
-    passwordConfirm,
+    },
   });
+};
 
-  createSendToken(newUser, 201, res);
-})
+const signUp = asyncWrapper(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { name, email, password, passwordConfirm } = req.body;
+    if (!name || !email || !password || !passwordConfirm) {
+      return next(new AppError('Please provide email and password', 400));
+    }
 
-const login = asyncWrapper(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    throw new AppError('Please provide email and password', 400);
+    const newUser = await User.create({
+      name,
+      email,
+      password,
+      passwordConfirm,
+    });
+
+    createSendToken(newUser, 201, res);
   }
-  const user = await User.findOne({ email }).select('+password');
+);
 
-  if (!user || !(await user.schema.methods.isCorrectPassword(password, user.password))) {
-    throw new AppError('Incorrect email or password', 401);
+const login = asyncWrapper(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      throw new AppError('Please provide email and password', 400);
+    }
+    const user = await User.findOne({ email }).select('+password');
+
+    if (
+      !user ||
+      !(await user.schema.methods.isCorrectPassword(password, user.password))
+    ) {
+      throw new AppError('Incorrect email or password', 401);
+    }
+
+    createSendToken(user, 200, res);
   }
-
-  createSendToken(user, 200, res);
-})
+);
 
 const logout = (req: Request, res: Response): void => {
   res.cookie(JWT_COOKIE, 'loggedout', {
@@ -71,66 +87,101 @@ const logout = (req: Request, res: Response): void => {
     httpOnly: true,
   });
   res.status(200).json({ status: 'success' });
-}
+};
 
-const updatePassword = asyncWrapper(async (req: IRequestWithUser, res: Response, next: NextFunction): Promise<void> => {
-  const user = await User.findById(req.user!.id).select('+password');
+const updatePassword = asyncWrapper(
+  async (
+    req: IRequestWithUser,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    const user = await User.findById(req.user!.id).select('+password');
 
-  if(!user) {
-    throw new AppError('User not found', 404);
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const { currentPassword, newPassword, newPasswordConfirm } = req.body;
+
+    const correct = await user.schema.methods.isCorrectPassword(
+      currentPassword,
+      user.password
+    );
+
+    if (!correct) {
+      throw new AppError('Incorrect password', 401);
+    }
+
+    user.password = newPassword;
+    user.passwordConfirm = newPasswordConfirm;
+
+    await user.save();
+
+    createSendToken(user, 200, res);
   }
+);
 
-  const { currentPassword, newPassword, newPasswordConfirm } = req.body;
+const protect = asyncWrapper(
+  async (
+    req: IRequestWithUser,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    let token: string | undefined;
 
-  const correct = await user.schema.methods.isCorrectPassword(currentPassword, user.password);
+    if (req.cookies && req.cookies.jwt && req.cookies.jwt !== 'loggedout') {
+      token = req.cookies.jwt;
+    }
+    if (!token) {
+      throw new AppError(
+        'You are not logged in! Please log in to get access.',
+        401
+      );
+    }
 
-  if(!correct) {
-    throw new AppError('Incorrect password', 401);
+    const decodedPayload = await promisify<
+      string,
+      Secret,
+      VerifyOptions,
+      JwtPayload & IUser
+    >(jwt.verify)(token, process.env.JWT_SECRET as Secret, {});
+
+    const currentUser = await User.findById(decodedPayload.id);
+
+    if (!currentUser) {
+      return next(
+        new AppError(
+          'The user belonging to this token does no longer exist.',
+          401
+        )
+      );
+    }
+
+    if (currentUser.schema.methods.changedPasswordAfter(decodedPayload.iat)) {
+      return next(
+        new AppError(
+          'User recently changed password! Please log in again.',
+          401
+        )
+      );
+    }
+    req.user = currentUser;
+    res.locals.user = currentUser;
+    next();
   }
-
-  user.password = newPassword;
-  user.passwordConfirm = newPasswordConfirm;
-
-  await user.save();
-
-  createSendToken(user, 200, res);
-})
-
-const protect = asyncWrapper(async (req: IRequestWithUser, res: Response, next: NextFunction): Promise<void> => {
-
-  let token: string | undefined;
-
-  if (req.cookies && req.cookies.jwt && req.cookies.jwt !== 'loggedout') {
-    token = req.cookies.jwt;
-  }
-  if(!token) {
-    throw new AppError('You are not logged in! Please log in to get access.', 401);
-  }
-
-  const decodedPayload = await promisify<string, Secret, VerifyOptions, JwtPayload & IUser>(jwt.verify)(token, process.env.JWT_SECRET as Secret, {});
-
-  const currentUser = await User.findById(decodedPayload.id);
-
-  if(!currentUser) {
-    return next(new AppError('The user belonging to this token does no longer exist.', 401));
-  }
-
-  if(currentUser.schema.methods.changedPasswordAfter(decodedPayload.iat)) {
-    return next(new AppError('User recently changed password! Please log in again.', 401));
-  }
-  req.user = currentUser;
-  res.locals.user = currentUser;
-  next();
-})
+);
 
 const restrictTo = (...roles: UserRoles[]) => {
   return (req: IRequestWithUser, res: Response, next: NextFunction): void => {
     if (!roles.includes(req.user!.role as UserRoles)) {
-      throw new AppError('You do not have permission to perform this action', 403);
+      throw new AppError(
+        'You do not have permission to perform this action',
+        403
+      );
     }
     next();
-  }
-}
+  };
+};
 
 const authController = {
   signUp,
@@ -138,7 +189,7 @@ const authController = {
   logout,
   updatePassword,
   restrictTo,
-  protect
-}
+  protect,
+};
 
-export default authController
+export default authController;

@@ -1,6 +1,6 @@
 import { Model, Document, model, Schema } from 'mongoose';
 import isEmail from 'validator/lib/isEmail';
-import bcrypt from 'bcryptjs'
+import bcrypt from 'bcryptjs';
 
 export enum UserRoles {
   ADMIN = 'admin',
@@ -22,12 +22,14 @@ export interface IUser extends Document {
 }
 
 interface IUserMethods extends Model<IUser> {
-  isCorrectPassword(candidatePassword: string, userPassword: string): Promise<boolean>;
+  isCorrectPassword(
+    candidatePassword: string,
+    userPassword: string
+  ): Promise<boolean>;
   changedPasswordAfter(JWTTimestamp: number): boolean;
 }
 
 type UserModel = Model<IUser> & IUserMethods;
-
 
 const userSchema = new Schema<IUser, UserModel>({
   name: {
@@ -62,7 +64,7 @@ const userSchema = new Schema<IUser, UserModel>({
     //     return value === this.get('password');
     //   },
     //   message: 'Passwords are not the same!',
-    // } 
+    // }
     // This keeps throwing an error. that this is not a function. I don't know why TS doesn't recognize this value being a document, tried using the get method but it still doesn't work
   },
   passwordChangedAt: Date,
@@ -82,42 +84,47 @@ const userSchema = new Schema<IUser, UserModel>({
 
 // ==================Middleware==================
 
-userSchema.pre<IUser>("save", function(next) {
+userSchema.pre<IUser>('save', function (next) {
   // Unlike in the validator function, here this points to the document that is about to be saved
-  if(!this.isModified("password")) return next();
+  if (!this.isModified('password')) return next();
   // So we can check if the password and passwordConfirm are the same
-  if(this.password !== this.passwordConfirm) {
-    return next(new Error("Passwords are not the same!"));
+  if (this.password !== this.passwordConfirm) {
+    return next(new Error('Passwords are not the same!'));
   }
   next();
 });
 
-userSchema.pre<IUser>("save", async function(next) {
-  if(!this.isModified("password")) return next();
+userSchema.pre<IUser>('save', async function (next) {
+  if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password!, 12);
   this.passwordConfirm = undefined;
   next();
-})
+});
 
-userSchema.pre<IUser>("save", function(next) {
-  if(!this.isModified("password") || this.isNew) return next();
+userSchema.pre<IUser>('save', function (next) {
+  if (!this.isModified('password') || this.isNew) return next();
   this.passwordChangedAt = new Date(Date.now() - 1000);
   next();
 });
 
 //==================Instance methods==================
 
-userSchema.methods.isCorrectPassword = async function(candidatePassword: string, userPassword: string): Promise<boolean> {
+userSchema.methods.isCorrectPassword = async function (
+  candidatePassword: string,
+  userPassword: string
+): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, userPassword);
 };
 
-userSchema.methods.changedPasswordAfter = function(JWTTimestamp: number): boolean {
-  if(this.passwordChangedAt) {
+userSchema.methods.changedPasswordAfter = function (
+  JWTTimestamp: number
+): boolean {
+  if (this.passwordChangedAt) {
     const changedTimestamp = this.passwordChangedAt.getTime() / 1000;
     return JWTTimestamp < changedTimestamp;
   }
   return false;
-}
+};
 
 const User = model<IUser, UserModel>('User', userSchema);
 
