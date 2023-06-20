@@ -2,6 +2,7 @@ import express from 'express';
 import morgan from 'morgan';
 
 import trackRouter from './routes/trackRoutes';
+import userRouter from './routes/userRoutes';
 
 // Start express app
 const app = express();
@@ -17,5 +18,6 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // Routes
 app.use('/api/v1/tracks', trackRouter);
+app.use('/api/v1/users', userRouter);
 
 export default app;
