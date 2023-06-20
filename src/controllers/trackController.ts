@@ -4,6 +4,8 @@ import multer from 'multer';
 
 import Track, { ITrack } from '../models/trackModel';
 
+import { maxAudioFileSize, maxImageFileSize } from '../constants/fileSize';
+
 import AppError from '../utils/appError';
 import asyncWrapper from '../utils/asyncWrapper';
 import { isNonNullable } from '../utils/base';
@@ -52,7 +54,7 @@ const validateFiles = (
     if (!coverImage.mimetype.startsWith('image/'))
       return next(new AppError('coverImage must be an image file', 400));
 
-    if (coverImage.size > 5 * 1024 * 1024)
+    if (coverImage.size > maxImageFileSize)
       return next(new AppError('coverImage size must not exceed 5MB', 400));
   }
 
@@ -60,7 +62,7 @@ const validateFiles = (
     if (!url.mimetype.startsWith('audio/'))
       return next(new AppError('url must be an audio file', 400));
 
-    if (url.size > 15 * 1024 * 1024)
+    if (url.size > maxAudioFileSize)
       return next(new AppError('url size must not exceed 15MB', 400));
   }
 };
