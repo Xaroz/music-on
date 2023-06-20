@@ -2,11 +2,11 @@ import { NextFunction, Request, Response, CookieOptions } from 'express';
 import jwt, { JwtPayload, VerifyOptions, Secret } from 'jsonwebtoken';
 import { promisify } from 'util';
 
-import User, { IUser } from '../models/userModel';
+import User, { IUser, UserRoles } from '../models/userModel';
 import asyncWrapper from '../utils/asyncWrapper';
 import AppError from '../utils/appError';
 import {IRequestWithUser} from '../types/request';
-
+import { DAY_IN_MILISECONDS, RuntimeEnv, JWT_COOKIE } from '../constants';
 
 const signToken = (id: string): string => jwt.sign({ id }, process.env.JWT_SECRET as Secret, {
     expiresIn: process.env.JWT_EXPIRES_IN,
@@ -15,12 +15,12 @@ const signToken = (id: string): string => jwt.sign({ id }, process.env.JWT_SECRE
 const createSendToken = (user: IUser, statusCode: number, res: Response): void => {
   const token = signToken(user._id);
   const cookieOptions: CookieOptions = {
-    expires: new Date(Date.now() + (parseInt(process.env.JWT_COOKIE_EXPIRES_IN || '9', 10) * 24 * 60 * 60 * 1000)),
+    expires: new Date(Date.now() + (parseInt(process.env.JWT_COOKIE_EXPIRES_IN || '9', 10) * DAY_IN_MILISECONDS)),
     httpOnly: true,
   }
-  if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
+  if (process.env.NODE_ENV === RuntimeEnv.PRODUCTION) cookieOptions.secure = true;
 
-  res.cookie('jwt', token, cookieOptions);
+  res.cookie(JWT_COOKIE, token, cookieOptions);
 
   // Remove the password from the output
   user.password = undefined;
@@ -58,7 +58,7 @@ const login = asyncWrapper(async (req: Request, res: Response, next: NextFunctio
   }
   const user = await User.findOne({ email }).select('+password');
 
-  if (!user || !(await user.schema.methods.correctPassword(password, user.password))) {
+  if (!user || !(await user.schema.methods.isCorrectPassword(password, user.password))) {
     throw new AppError('Incorrect email or password', 401);
   }
 
@@ -66,15 +66,15 @@ const login = asyncWrapper(async (req: Request, res: Response, next: NextFunctio
 })
 
 const logout = (req: Request, res: Response): void => {
-  res.cookie('jwt', 'loggedout', {
-    expires: new Date(Date.now() + (10 * 1000)),
+  res.cookie(JWT_COOKIE, 'loggedout', {
+    expires: new Date(Date.now()),
     httpOnly: true,
   });
   res.status(200).json({ status: 'success' });
 }
 
 const updatePassword = asyncWrapper(async (req: IRequestWithUser, res: Response, next: NextFunction): Promise<void> => {
-  const user = await User.findById(req.user.id).select('+password');
+  const user = await User.findById(req.user!.id).select('+password');
 
   if(!user) {
     throw new AppError('User not found', 404);
@@ -82,7 +82,7 @@ const updatePassword = asyncWrapper(async (req: IRequestWithUser, res: Response,
 
   const { currentPassword, newPassword, newPasswordConfirm } = req.body;
 
-  const correct = await user.schema.methods.correctPassword(currentPassword, user.password);
+  const correct = await user.schema.methods.isCorrectPassword(currentPassword, user.password);
 
   if(!correct) {
     throw new AppError('Incorrect password', 401);
@@ -123,9 +123,9 @@ const protect = asyncWrapper(async (req: IRequestWithUser, res: Response, next: 
   next();
 })
 
-const restrictTo = (...roles: string[]) => {
+const restrictTo = (...roles: UserRoles[]) => {
   return (req: IRequestWithUser, res: Response, next: NextFunction): void => {
-    if (!roles.includes(req.user.role)) {
+    if (!roles.includes(req.user!.role as UserRoles)) {
       throw new AppError('You do not have permission to perform this action', 403);
     }
     next();

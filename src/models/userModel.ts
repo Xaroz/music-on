@@ -1,8 +1,12 @@
 import { Model, Document, model, Schema } from 'mongoose';
 import isEmail from 'validator/lib/isEmail';
 import bcrypt from 'bcryptjs'
-import crypto from 'crypto'
 
+export enum UserRoles {
+  ADMIN = 'admin',
+  ARTIST = 'artist',
+  USER = 'user',
+}
 export interface IUser extends Document {
   name: string;
   email: string;
@@ -18,7 +22,7 @@ export interface IUser extends Document {
 }
 
 interface IUserMethods extends Model<IUser> {
-  correctPassword(candidatePassword: string, userPassword: string): Promise<boolean>;
+  isCorrectPassword(candidatePassword: string, userPassword: string): Promise<boolean>;
   changedPasswordAfter(JWTTimestamp: number): boolean;
 }
 
@@ -71,8 +75,8 @@ const userSchema = new Schema<IUser, UserModel>({
   },
   role: {
     type: String,
-    enum: ['user', 'artist', 'admin'],
-    default: 'user',
+    enum: UserRoles,
+    default: UserRoles.USER,
   },
 });
 
@@ -103,7 +107,7 @@ userSchema.pre<IUser>("save", function(next) {
 
 //==================Instance methods==================
 
-userSchema.methods.correctPassword = async function(candidatePassword: string, userPassword: string): Promise<boolean> {
+userSchema.methods.isCorrectPassword = async function(candidatePassword: string, userPassword: string): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, userPassword);
 };
 
