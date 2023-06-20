@@ -1,13 +1,15 @@
-import mongoose, { Document } from 'mongoose';
+import { Model, Document, model, Schema } from 'mongoose';
 import isEmail from 'validator/lib/isEmail';
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 export interface IUser extends Document {
   name: string;
   email: string;
   photo?: string;
   createdAt: Date;
-  password: string;
-  passwordConfirm: string;
+  password?: string;
+  passwordConfirm?: string;
   passwordChangedAt: Date;
   passwordResetToken: string;
   passwordResetExpires: Date;
@@ -15,7 +17,14 @@ export interface IUser extends Document {
   type: string;
 }
 
-const userSchema = new mongoose.Schema({
+interface IUserMethods extends Model<IUser> {
+  correctPassword(candidatePassword: string, userPassword: string): Promise<boolean>;
+}
+
+type UserModel = Model<IUser> & IUserMethods;
+
+
+const userSchema = new Schema<IUser, UserModel>({
   name: {
     type: String,
     required: [true, 'Please tell us your name!'],
@@ -65,6 +74,8 @@ const userSchema = new mongoose.Schema({
   },
 });
 
+// Middleware
+
 userSchema.pre<IUser>("save", function(next) {
   // Unlike in the validator function, here this points to the document that is about to be saved
   if(!this.isModified("password")) return next();
@@ -75,6 +86,25 @@ userSchema.pre<IUser>("save", function(next) {
   next();
 });
 
-const User = mongoose.model<IUser>('User', userSchema);
+userSchema.pre<IUser>("save", async function(next) {
+  if(!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password!, 12);
+  this.passwordConfirm = undefined;
+  next();
+})
+
+userSchema.pre<IUser>("save", function(next) {
+  if(!this.isModified("password") || this.isNew) return next();
+  this.passwordChangedAt = new Date(Date.now() - 1000);
+  next();
+});
+
+// Instance methods
+
+userSchema.methods.correctPassword = async function(candidatePassword: string, userPassword: string): Promise<boolean> {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+const User = model<IUser, UserModel>('User', userSchema);
 
 export default User;

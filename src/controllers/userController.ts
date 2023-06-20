@@ -1,8 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 
 import User, { IUser } from '../models/userModel';
+import asyncWrapper from '../utils/asyncWrapper';
 
-const createUser = async (req: Request, res: Response): Promise<void> => {
+const createUser = asyncWrapper(async (req: Request, res: Response): Promise<void> => {
   try {
     const user: IUser = await User.create(req.body);
     res.status(201).json({
@@ -13,7 +14,7 @@ const createUser = async (req: Request, res: Response): Promise<void> => {
     console.error('Error creating user:', error);
     res.status(500).json({ error: error });
   }
-}
+})
 
 const userController = {
   createUser,
