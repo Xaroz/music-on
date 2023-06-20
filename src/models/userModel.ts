@@ -19,6 +19,7 @@ export interface IUser extends Document {
 
 interface IUserMethods extends Model<IUser> {
   correctPassword(candidatePassword: string, userPassword: string): Promise<boolean>;
+  changedPasswordAfter(JWTTimestamp: number): boolean;
 }
 
 type UserModel = Model<IUser> & IUserMethods;
@@ -105,6 +106,14 @@ userSchema.pre<IUser>("save", function(next) {
 userSchema.methods.correctPassword = async function(candidatePassword: string, userPassword: string): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, userPassword);
 };
+
+userSchema.methods.changedPasswordAfter = function(JWTTimestamp: number): boolean {
+  if(this.passwordChangedAt) {
+    const changedTimestamp = this.passwordChangedAt.getTime() / 1000;
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
+}
 
 const User = model<IUser, UserModel>('User', userSchema);
 

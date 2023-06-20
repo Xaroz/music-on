@@ -4,11 +4,14 @@ import authController from '../controllers/authController';
 
 const router = express.Router();
 
-const { signUp, login, logout } = authController;
+const { signUp, login, logout, updatePassword, protect } = authController;
 
 // Authentication
 router.post('/signup', signUp);
 router.post('/login', login);
 router.get('/logout', logout);
+
+router.use(protect);
+router.patch('/changePassword', updatePassword);
 
 export default router;

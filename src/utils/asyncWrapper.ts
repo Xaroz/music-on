@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
+import {IRequestWithUser} from '../types/request';
 
 const asyncWrapper =
-  (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
-  (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  (fn: (req: IRequestWithUser, res: Response, next: NextFunction) => Promise<any>) =>
+  (req: IRequestWithUser, res: Response, next: NextFunction): Promise<void> => {
     return fn(req, res, next).catch(next);
   };
 
