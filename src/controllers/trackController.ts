@@ -15,7 +15,7 @@ const getErrorMessage = (
   return errors.filter(isNonNullable);
 };
 
-const multerUploadFields = multer({ limits: {} }).fields([
+const multerUploadFields = multer().fields([
   { name: 'coverImage', maxCount: 1 },
   { name: 'url', maxCount: 1 },
 ]);
