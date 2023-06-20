@@ -1,9 +1,61 @@
 import { NextFunction, Request, Response } from 'express';
+import { Error } from 'mongoose';
+
 import Track, { ITrack } from '../models/trackModel';
+
+function isNonNullable<TValue>(
+  value: TValue | undefined | null
+): value is TValue {
+  return value !== null && value !== undefined; // Can also be `!!value`.
+}
+
+const getErrorMessage = (
+  errors: Array<Error.ValidationError | null>
+): Array<Error.ValidationError> => {
+  return errors.filter(isNonNullable);
+};
+
+const validateBeforeUpload = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  console.log('BODY', req.body);
+  const { name, artists } = req.body;
+
+  console.log(name);
+
+  if (!name || !artists) {
+    res
+      .status(400)
+      .json({ status: 'fail', error: 'Name or artists must are required KLK' });
+    return;
+  }
+
+  try {
+    const track = new Track({ name, artists });
+    const nameValidationError = track.validateSync('name');
+    const emailValidationError = track.validateSync('email');
+
+    const errors = getErrorMessage([nameValidationError, emailValidationError]);
+
+    if (errors.length > 0) {
+      res.status(400).json({ status: 'fail', error: errors });
+      return;
+    }
+
+    console.log('validation passed');
+
+    next();
+  } catch (err) {
+    res.status(400).json({ status: 'fail', error: err });
+  }
+};
 
 const createTrack = async (req: Request, res: Response): Promise<void> => {
   try {
     const track: ITrack = await Track.create(req.body);
+
     res.status(201).json({
       status: 'success',
       data: track,
@@ -100,6 +152,7 @@ const trackController = {
   getTrack,
   updateTrack,
   deleteTrack,
+  validateBeforeUpload,
 };
 
 export default trackController;
