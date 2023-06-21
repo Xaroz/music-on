@@ -4,12 +4,16 @@ import multer from 'multer';
 
 import Track, { ITrack } from '../models/trackModel';
 
-import { maxAudioFileSize, maxImageFileSize } from '../constants/fileSize';
+import {
+  MAX_AUDIO_FILE_SIZE,
+  MAX_IMAGE_FILE_SIZE,
+} from '../constants/fileSize';
 
 import AppError from '../utils/appError';
 import asyncWrapper from '../utils/asyncWrapper';
 import { isNonNullable } from '../utils/base';
 import { getS3Params, uploadFilesToS3 } from '../utils/uploadFile';
+import { validateFile } from '../utils/validateFile';
 
 const getErrorMessage = (
   errors: Array<Error.ValidationError | null>
@@ -45,28 +49,6 @@ const validateBeforeUpload = asyncWrapper(
   }
 );
 
-const validateFiles = (
-  coverImage: Express.Multer.File | undefined,
-  url: Express.Multer.File | undefined,
-  next: NextFunction
-) => {
-  if (coverImage) {
-    if (!coverImage.mimetype.startsWith('image/'))
-      return next(new AppError('coverImage must be an image file', 400));
-
-    if (coverImage.size > maxImageFileSize)
-      return next(new AppError('coverImage size must not exceed 5MB', 400));
-  }
-
-  if (url) {
-    if (!url.mimetype.startsWith('audio/'))
-      return next(new AppError('url must be an audio file', 400));
-
-    if (url.size > maxAudioFileSize)
-      return next(new AppError('url size must not exceed 15MB', 400));
-  }
-};
-
 const uploadCreateToS3 = asyncWrapper(
   async (req: Request, res: Response, next: NextFunction) => {
     const files = req.files as
@@ -79,7 +61,15 @@ const uploadCreateToS3 = asyncWrapper(
     if (!coverImage || !url)
       return next(new AppError('coverImage or url must be defined', 400));
 
-    validateFiles(coverImage, url, next);
+    const coverImageValidationError = validateFile(
+      coverImage,
+      'image/',
+      MAX_IMAGE_FILE_SIZE
+    );
+    if (coverImageValidationError) return next(coverImageValidationError);
+
+    const urlValidationError = validateFile(url, 'audio/', MAX_AUDIO_FILE_SIZE);
+    if (urlValidationError) return next(urlValidationError);
 
     const coverImageParams = getS3Params(coverImage);
     const urlParams = getS3Params(url);
@@ -107,7 +97,15 @@ const uploadPatchToS3 = asyncWrapper(
 
     if (!coverImage && !url) return next();
 
-    validateFiles(coverImage, url, next);
+    const coverImageValidationError = validateFile(
+      coverImage,
+      'image/',
+      MAX_IMAGE_FILE_SIZE
+    );
+    if (coverImageValidationError) return next(coverImageValidationError);
+
+    const urlValidationError = validateFile(url, 'audio/', MAX_AUDIO_FILE_SIZE);
+    if (urlValidationError) return next(urlValidationError);
 
     const coverImageData = coverImage
       ? await uploadFilesToS3([getS3Params(coverImage)])
