@@ -6,7 +6,7 @@ import User, { IUser, UserRoles } from '../models/userModel';
 import asyncWrapper from '../utils/asyncWrapper';
 import AppError from '../utils/appError';
 import { IRequestWithUser } from '../types/request';
-import { DAY_IN_MILISECONDS, RuntimeEnv, JWT_COOKIE } from '../constants';
+import { DAY_IN_MILLISECONDS, RuntimeEnv, JWT_COOKIE } from '../constants';
 
 const signToken = (id: string): string =>
   jwt.sign({ id }, process.env.JWT_SECRET as Secret, {
@@ -23,7 +23,7 @@ const createSendToken = (
     expires: new Date(
       Date.now() +
         parseInt(process.env.JWT_COOKIE_EXPIRES_IN || '9', 10) *
-          DAY_IN_MILISECONDS
+          DAY_IN_MILLISECONDS
     ),
     httpOnly: true,
   };
