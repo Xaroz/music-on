@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
-import app from './app';
-
 dotenv.config();
+
+import app from './app';
 
 // Set up server
 const port = process.env.PORT || 3000;
