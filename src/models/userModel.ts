@@ -23,7 +23,7 @@ export interface IUser extends Document {
   role: UserRoles;
 }
 
-interface IUserMethods extends Model<IUser> {
+interface IUserMethods {
   isCorrectPassword(
     candidatePassword: string,
     userPassword: string
@@ -32,9 +32,11 @@ interface IUserMethods extends Model<IUser> {
   createPasswordResetToken(): string;
 }
 
-type UserModel = Model<IUser> & IUserMethods;
+export interface UserModel extends Model<IUser, {}, IUserMethods> {
+  // Build static methods here
+}
 
-const userSchema = new Schema<IUser, UserModel>({
+const schema = new Schema<IUser, UserModel, IUserMethods>({
   name: {
     type: String,
     required: [true, 'Please tell us your name!'],
@@ -79,7 +81,7 @@ const userSchema = new Schema<IUser, UserModel>({
 
 // ==================Middleware==================
 
-userSchema.pre<IUser>('save', function (next) {
+schema.pre<IUser>('save', function (next) {
   // Unlike in the validator function, here this points to the document that is about to be saved
   if (!this.isModified('password')) return next();
   // So we can check if the password and passwordConfirm are the same
@@ -89,14 +91,14 @@ userSchema.pre<IUser>('save', function (next) {
   next();
 });
 
-userSchema.pre<IUser>('save', async function (next) {
+schema.pre<IUser>('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password!, 12);
   this.passwordConfirm = undefined;
   next();
 });
 
-userSchema.pre<IUser>('save', function (next) {
+schema.pre<IUser>('save', function (next) {
   if (!this.isModified('password') || this.isNew) return next();
   this.passwordChangedAt = new Date(Date.now() - 1000);
   next();
@@ -104,16 +106,14 @@ userSchema.pre<IUser>('save', function (next) {
 
 //==================Instance methods==================
 
-userSchema.methods.isCorrectPassword = async function (
+schema.methods.isCorrectPassword = async function (
   candidatePassword: string,
   userPassword: string
 ): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, userPassword);
 };
 
-userSchema.methods.changedPasswordAfter = function (
-  JWTTimestamp: number
-): boolean {
+schema.methods.changedPasswordAfter = function (JWTTimestamp: number): boolean {
   if (this.passwordChangedAt) {
     const changedTimestamp = this.passwordChangedAt.getTime() / 1000;
     return JWTTimestamp < changedTimestamp;
@@ -121,7 +121,7 @@ userSchema.methods.changedPasswordAfter = function (
   return false;
 };
 
-userSchema.methods.createPasswordResetToken = function (): string {
+schema.methods.createPasswordResetToken = function (): string {
   const resetToken = crypto.randomBytes(32).toString('hex');
 
   this.passwordResetToken = crypto
@@ -129,11 +129,10 @@ userSchema.methods.createPasswordResetToken = function (): string {
     .update(resetToken)
     .digest('hex');
 
-  this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
-
+  this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 60 * 1000);
   return resetToken;
 };
 
-const User = model<IUser, UserModel>('User', userSchema);
+const User = model<IUser, UserModel>('User', schema);
 
 export default User;

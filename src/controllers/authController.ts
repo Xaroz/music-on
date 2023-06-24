@@ -60,6 +60,9 @@ const signUp = asyncWrapper(
       passwordConfirm,
     });
 
+    const url = `${req.protocol}://${req.get('host')}/me`;
+    await new Email(newUser, url).sendWelcome();
+
     createSendToken(newUser, 201, res);
   }
 );
@@ -131,14 +134,12 @@ const forgotPassword = asyncWrapper(
       throw new AppError('There is no user with email.', 404);
     }
 
-    const resetToken = user.schema.methods.createPasswordResetToken();
-
+    const resetToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
-
     try {
       const resetURL = `${req.protocol}://${req.get(
         'host'
-      )}/api/v1/users/resetPassword/${resetToken}`;
+      )}/api/v1/users/reset-password/${resetToken}`;
 
       await new Email(user, resetURL).sendPasswordReset();
 
@@ -147,8 +148,8 @@ const forgotPassword = asyncWrapper(
         message: 'Token sent to email!',
       });
     } catch (err) {
-      user.schema.methods.passwordResetToken = undefined;
-      user.schema.methods.passwordResetExpires = undefined;
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
 
       await user.save({ validateBeforeSave: false });
 
