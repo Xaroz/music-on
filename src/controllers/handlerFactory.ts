@@ -84,3 +84,13 @@ export const getAllEntities = <ModelInterface>(
       });
     }
   );
+
+const handlerFactory = {
+  createOne,
+  getOne,
+  updateOne,
+  deleteOne,
+  getAllEntities,
+};
+
+export default handlerFactory;
