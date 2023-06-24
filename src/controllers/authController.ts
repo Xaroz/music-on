@@ -1,9 +1,11 @@
 import { NextFunction, Request, Response, CookieOptions } from 'express';
 import jwt, { JwtPayload, VerifyOptions, Secret } from 'jsonwebtoken';
+import crypto from 'crypto';
 import { promisify } from 'util';
 
 import User, { IUser, UserRoles } from '../models/userModel';
 import asyncWrapper from '../utils/asyncWrapper';
+import Email from '../utils/email';
 import AppError from '../utils/appError';
 import { IRequestWithUser } from '../types/request';
 import { DAY_IN_MILLISECONDS, RuntimeEnv, JWT_COOKIE } from '../constants';
@@ -121,6 +123,73 @@ const updatePassword = asyncWrapper(
   }
 );
 
+const forgotPassword = asyncWrapper(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const user = await User.findOne({ email: req.body.email });
+
+    if (!user) {
+      throw new AppError('There is no user with email.', 404);
+    }
+
+    const resetToken = user.schema.methods.createPasswordResetToken();
+
+    await user.save({ validateBeforeSave: false });
+
+    try {
+      const resetURL = `${req.protocol}://${req.get(
+        'host'
+      )}/api/v1/users/resetPassword/${resetToken}`;
+
+      await new Email(user, resetURL).sendPasswordReset();
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Token sent to email!',
+      });
+    } catch (err) {
+      user.schema.methods.passwordResetToken = undefined;
+      user.schema.methods.passwordResetExpires = undefined;
+
+      await user.save({ validateBeforeSave: false });
+
+      return next(
+        new AppError(
+          'There was an error sending the email. Try again later!',
+          500
+        )
+      );
+    }
+  }
+);
+
+const resetPassword = asyncWrapper(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(req.params.token)
+      .digest('hex');
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      throw new AppError('Token is invalid or has expired', 400);
+    }
+
+    user.password = req.body.password;
+    user.passwordConfirm = req.body.passwordConfirm;
+
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+
+    await user.save();
+
+    createSendToken(user, 200, res);
+  }
+);
+
 const protect = asyncWrapper(
   async (
     req: IRequestWithUser,
@@ -188,6 +257,8 @@ const authController = {
   login,
   logout,
   updatePassword,
+  forgotPassword,
+  resetPassword,
   restrictTo,
   protect,
 };

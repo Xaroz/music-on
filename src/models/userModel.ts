@@ -1,6 +1,7 @@
 import { Model, Document, model, Schema } from 'mongoose';
 import isEmail from 'validator/lib/isEmail';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 export enum UserRoles {
   ADMIN = 'admin',
@@ -16,8 +17,8 @@ export interface IUser extends Document {
   password?: string;
   passwordConfirm?: string;
   passwordChangedAt: Date;
-  passwordResetToken: string;
-  passwordResetExpires: Date;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
   active: boolean;
   role: UserRoles;
 }
@@ -28,6 +29,7 @@ interface IUserMethods extends Model<IUser> {
     userPassword: string
   ): Promise<boolean>;
   changedPasswordAfter(JWTTimestamp: number): boolean;
+  createPasswordResetToken(): string;
 }
 
 type UserModel = Model<IUser> & IUserMethods;
@@ -117,6 +119,19 @@ userSchema.methods.changedPasswordAfter = function (
     return JWTTimestamp < changedTimestamp;
   }
   return false;
+};
+
+userSchema.methods.createPasswordResetToken = function (): string {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+  return resetToken;
 };
 
 const User = model<IUser, UserModel>('User', userSchema);
