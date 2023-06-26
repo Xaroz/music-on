@@ -7,6 +7,7 @@ export enum UserRoles {
   ARTIST = 'artist',
   USER = 'user',
 }
+
 export interface IUser extends Document {
   name: string;
   email: string;
@@ -18,7 +19,7 @@ export interface IUser extends Document {
   passwordResetToken: string;
   passwordResetExpires: Date;
   active: boolean;
-  role: string;
+  role: UserRoles;
 }
 
 interface IUserMethods extends Model<IUser> {
@@ -58,14 +59,6 @@ const userSchema = new Schema<IUser, UserModel>({
   passwordConfirm: {
     type: String,
     required: [true, 'Please confirm your password!'],
-    // validate: {
-    //   validator: function (value: string): boolean {
-    //     return value === this.password;
-    //     return value === this.get('password');
-    //   },
-    //   message: 'Passwords are not the same!',
-    // }
-    // This keeps throwing an error. that this is not a function. I don't know why TS doesn't recognize this value being a document, tried using the get method but it still doesn't work
   },
   passwordChangedAt: Date,
   passwordResetToken: String,
