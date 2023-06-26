@@ -5,8 +5,16 @@ import authController from '../controllers/authController';
 
 import { UserRoles } from '../models/userModel';
 
-const { signUp, login, logout, updatePassword, protect, restrictTo } =
-  authController;
+const {
+  signUp,
+  login,
+  logout,
+  updatePassword,
+  protect,
+  restrictTo,
+  forgotPassword,
+  resetPassword,
+} = authController;
 
 const router = express.Router();
 
@@ -14,6 +22,9 @@ const router = express.Router();
 router.post('/signup', signUp);
 router.post('/login', login);
 router.get('/logout', logout);
+
+router.post('/forgot-password', forgotPassword);
+router.patch('/reset-password/:token', resetPassword);
 
 router.use(protect);
 router.patch('/change-password', updatePassword);
