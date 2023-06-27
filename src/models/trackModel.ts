@@ -7,6 +7,7 @@ export interface ITrack extends Document {
   releaseDate: Date;
   createdAt: Date;
   artists: Array<string>;
+  genres: Array<Schema.Types.ObjectId>;
 }
 
 const trackSchema: Schema<ITrack> = new mongoose.Schema({
@@ -38,6 +39,16 @@ const trackSchema: Schema<ITrack> = new mongoose.Schema({
       required: true,
     },
   ],
+  genres: {
+    type: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Genre',
+      },
+    ],
+    required: [true, 'Genres are required'],
+    min: [1, 'Atleast one genre is required'],
+  },
 });
 
 export default mongoose.model<ITrack>('Track', trackSchema);
