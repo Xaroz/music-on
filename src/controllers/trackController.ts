@@ -5,6 +5,14 @@ import multer from 'multer';
 import Track, { ITrack } from '../models/trackModel';
 
 import {
+  getOne,
+  createOne,
+  updateOne,
+  deleteOne,
+  getAllEntities,
+} from '../controllers/handlerFactory';
+
+import {
   MAX_AUDIO_FILE_SIZE,
   MAX_IMAGE_FILE_SIZE,
 } from '../constants/fileSize';
@@ -121,78 +129,15 @@ const uploadPatchToS3 = asyncWrapper(
   }
 );
 
-const createTrack = asyncWrapper(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const track: ITrack = await Track.create(req.body);
+const createTrack = createOne<ITrack>(Track);
 
-    res.status(201).json({
-      status: 'success',
-      data: track,
-    });
-  }
-);
+const getAllTracks = getAllEntities<ITrack>(Track);
 
-const getAllTracks = asyncWrapper(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const tracks: ITrack[] = await Track.find();
-    res.status(200).json({
-      status: 'success',
-      results: tracks.length,
-      data: tracks,
-    });
-  }
-);
+const getTrack = getOne<ITrack>(Track);
 
-const getTrack = asyncWrapper(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const track: ITrack[] | null = await Track.findById(req.params.id);
+const updateTrack = updateOne<ITrack>(Track);
 
-    if (!track) {
-      return next(new AppError('No track found with that ID', 404));
-    }
-
-    res.status(200).json({
-      status: 'success',
-      data: track,
-    });
-  }
-);
-
-const updateTrack = asyncWrapper(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const updatedTrack: ITrack[] | null = await Track.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedTrack) {
-      return next(new AppError('No track found with that ID', 404));
-    }
-
-    res.status(201).json({
-      status: 'success',
-      data: updatedTrack,
-    });
-  }
-);
-
-const deleteTrack = asyncWrapper(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const removedTrack: ITrack[] | null = await Track.findByIdAndDelete(
-      req.params.id
-    );
-
-    if (!removedTrack) {
-      return next(new AppError('No track found with that ID', 404));
-    }
-
-    res.status(204).json({
-      status: 'success',
-      data: null,
-    });
-  }
-);
+const deleteTrack = deleteOne<ITrack>(Track);
 
 const trackController = {
   createTrack,
