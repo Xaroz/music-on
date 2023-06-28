@@ -7,15 +7,18 @@ import { UserRoles } from '../models/userModel';
 
 const router = express.Router();
 
-router.route('/').get(trackController.getAllTracks).post(
-  authController.protect,
-  authController.restrictTo(UserRoles.ADMIN, UserRoles.ARTIST),
-  trackController.multerUploadFields,
-  trackController.validateBeforeUpload,
-  // trackController.validateDataExistence,
-  trackController.uploadCreateToS3,
-  trackController.createTrack
-);
+router
+  .route('/')
+  .get(trackController.getAllTracks)
+  .post(
+    authController.protect,
+    authController.restrictTo(UserRoles.ADMIN, UserRoles.ARTIST),
+    trackController.multerUploadFields,
+    trackController.validateBeforeUpload,
+    trackController.validateDataExistence,
+    trackController.uploadCreateToS3,
+    trackController.createTrack
+  );
 
 router
   .route('/:id')
