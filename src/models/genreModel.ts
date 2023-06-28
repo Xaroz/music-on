@@ -1,5 +1,5 @@
-import { ModelErrorEnum } from 'constants/error';
-import mongoose, { Document, Schema } from 'mongoose';
+import { ModelErrorEnum } from '../constants/error';
+import { Document, model, Schema } from 'mongoose';
 
 export interface IGenre extends Document {
   name: string;
@@ -7,14 +7,15 @@ export interface IGenre extends Document {
   createdAt: Date;
 }
 
-const genreSchema: Schema<IGenre> = new mongoose.Schema({
+const genreSchema: Schema<IGenre> = new Schema({
   name: {
     type: String,
     required: [true, ModelErrorEnum.REQUIRED_NAME],
   },
   description: {
     type: String,
-    required: [true, ModelErrorEnum.DESCRIPTION_NAME],
+    required: [true, ModelErrorEnum.REQUIRED_DESCRIPTION],
+    minlength: [5, 'Atleast 5 characters are required for description'],
   },
   createdAt: {
     type: Date,
@@ -23,4 +24,6 @@ const genreSchema: Schema<IGenre> = new mongoose.Schema({
   },
 });
 
-export default mongoose.model<IGenre>('Genre', genreSchema);
+const Genre = model<IGenre>('Genre', genreSchema);
+
+export default Genre;

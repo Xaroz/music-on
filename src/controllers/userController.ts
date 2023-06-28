@@ -1,5 +1,3 @@
-import { NextFunction, Request, Response } from 'express';
-
 import User, { IUser } from '../models/userModel';
 
 import {

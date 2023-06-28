@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import { Document, model, Schema, Query } from 'mongoose';
 
 export interface ITrack extends Document {
   name: string;
@@ -6,11 +6,11 @@ export interface ITrack extends Document {
   url: string;
   releaseDate: Date;
   createdAt: Date;
-  artists: Array<string>;
+  artists: Array<Schema.Types.ObjectId>;
   genres: Array<Schema.Types.ObjectId>;
 }
 
-const trackSchema: Schema<ITrack> = new mongoose.Schema({
+const trackSchema: Schema<ITrack> = new Schema({
   name: {
     type: String,
     required: true,
@@ -33,12 +33,16 @@ const trackSchema: Schema<ITrack> = new mongoose.Schema({
     default: Date.now(),
     select: false,
   },
-  artists: [
-    {
-      type: String,
-      required: true,
-    },
-  ],
+  artists: {
+    type: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    required: [true, 'Artists are required'],
+    min: [1, 'Atleast one artist is required'],
+  },
   genres: {
     type: [
       {
@@ -51,4 +55,21 @@ const trackSchema: Schema<ITrack> = new mongoose.Schema({
   },
 });
 
-export default mongoose.model<ITrack>('Track', trackSchema);
+// Query Middleware
+
+const populateGenresAndArtists = function <T extends Document>(
+  this: Query<T[], T>
+) {
+  this.populate({
+    path: 'genres artists',
+    // This is not working for some reason
+    // select: '-__v',
+  });
+};
+
+trackSchema.pre('find', populateGenresAndArtists);
+trackSchema.pre('findOne', populateGenresAndArtists);
+
+const Track = model<ITrack>('Track', trackSchema);
+
+export default Track;

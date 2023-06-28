@@ -1,4 +1,4 @@
 export enum ModelErrorEnum {
   REQUIRED_NAME = 'Name is required',
-  DESCRIPTION_NAME = 'Description is required',
+  REQUIRED_DESCRIPTION = 'Description is required',
 }
