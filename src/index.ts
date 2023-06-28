@@ -6,7 +6,7 @@ dotenv.config();
 import app from './app';
 
 // Set up server
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8000;
 
 const DB = process.env.MONGODB_URL
   ? process.env.MONGODB_URL.replace(
