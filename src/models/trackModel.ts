@@ -5,55 +5,54 @@ export interface ITrack extends Document {
   coverImage: string;
   url: string;
   releaseDate: Date;
-  createdAt: Date;
   artists: Array<Schema.Types.ObjectId>;
   genres: Array<Schema.Types.ObjectId>;
 }
 
-const trackSchema: Schema<ITrack> = new Schema({
-  name: {
-    type: String,
-    required: true,
-    minlength: [4, 'Minimum length is 4'],
+const trackSchema: Schema<ITrack> = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      minlength: [4, 'Minimum length is 4'],
+    },
+    coverImage: {
+      type: String,
+      required: true,
+    },
+    url: {
+      type: String,
+      required: true,
+    },
+    releaseDate: {
+      type: Date,
+      default: Date.now(),
+    },
+    artists: {
+      type: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      ],
+      required: [true, 'Artists are required'],
+      min: [1, 'At least one artist is required'],
+    },
+    genres: {
+      type: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: 'Genre',
+        },
+      ],
+      required: [true, 'Genres are required'],
+      min: [1, 'At least one genre is required'],
+    },
   },
-  coverImage: {
-    type: String,
-    required: true,
-  },
-  url: {
-    type: String,
-    required: true,
-  },
-  releaseDate: {
-    type: Date,
-    default: Date.now(),
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now(),
-    select: false,
-  },
-  artists: {
-    type: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-      },
-    ],
-    required: [true, 'Artists are required'],
-    min: [1, 'Atleast one artist is required'],
-  },
-  genres: {
-    type: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Genre',
-      },
-    ],
-    required: [true, 'Genres are required'],
-    min: [1, 'Atleast one genre is required'],
-  },
-});
+  {
+    timestamps: true,
+  }
+);
 
 // Query Middleware
 

@@ -107,8 +107,6 @@ const uploadCreateToS3 = asyncWrapper(
     const coverImage = files?.coverImage ? files?.coverImage[0] : undefined;
     const url = files?.url ? files?.url[0] : undefined;
 
-    console.log('hit this route');
-
     if (!coverImage || !url)
       return next(new AppError('coverImage or url must be defined', 400));
 
