@@ -1,8 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
-import { Error } from 'mongoose';
+import mongoose, { Error } from 'mongoose';
 import multer from 'multer';
 
+import Genre, { IGenre } from '../models/genreModel';
 import Track, { ITrack } from '../models/trackModel';
+import User, { IUser } from '../models/userModel';
 
 import {
   getOne,
@@ -17,11 +19,14 @@ import {
   MAX_IMAGE_FILE_SIZE,
 } from '../constants/fileSize';
 
+import { IRequestWithUser } from '../types/request';
+
 import AppError from '../utils/appError';
 import asyncWrapper from '../utils/asyncWrapper';
 import { isNonNullable } from '../utils/base';
 import { getS3Params, uploadFilesToS3 } from '../utils/uploadFile';
 import { validateFile } from '../utils/validateFile';
+import { validateEntitiesExistence } from '../utils/requestValidation';
 
 const getErrorMessage = (
   errors: Array<Error.ValidationError | null>
@@ -36,21 +41,57 @@ const multerUploadFields = multer().fields([
 
 const validateBeforeUpload = asyncWrapper(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { name, artists } = req.body;
+    const { name, genres, artists } = req.body;
 
-    if (!name || !artists) {
-      return next(new AppError('Name or artists are required', 400));
+    if (!name || !genres || !artists) {
+      return next(new AppError('Name, genres or artists are required', 400));
     }
 
-    const track = new Track({ name, artists });
+    const track = new Track({ name, artists, genres });
     const nameValidationError = track.validateSync('name');
-    const emailValidationError = track.validateSync('email');
+    const artistsValidationError = track.validateSync('artists');
+    const genresValidationError = track.validateSync('genres');
 
-    const errors = getErrorMessage([nameValidationError, emailValidationError]);
+    const errors = getErrorMessage([
+      nameValidationError,
+      artistsValidationError,
+      genresValidationError,
+    ]);
 
     if (errors.length > 0) {
       res.status(400).json({ status: 'fail', error: errors });
       return;
+    }
+
+    next();
+  }
+);
+
+const validateDataExistence = asyncWrapper(
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
+    let { genres, artists } = req.body;
+
+    // Since we are using form-data we have to make sure that the value is
+    // an array otherwise just convert it to one
+
+    if (genres) {
+      if (!Array.isArray(genres)) genres = [genres];
+
+      const genresExist = await validateEntitiesExistence<IGenre>(
+        Genre,
+        genres
+      );
+      if (!genresExist) return next(new AppError('Genres not found', 400));
+    }
+
+    if (artists) {
+      if (!Array.isArray(artists)) artists = [artists];
+
+      const artistsExist = await validateEntitiesExistence<IUser>(
+        User,
+        artists
+      );
+      if (!artistsExist) return next(new AppError('Artists not found', 400));
     }
 
     next();
@@ -146,6 +187,7 @@ const trackController = {
   updateTrack,
   deleteTrack,
   validateBeforeUpload,
+  validateDataExistence,
   uploadCreateToS3,
   uploadPatchToS3,
   multerUploadFields,

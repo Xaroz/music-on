@@ -13,7 +13,6 @@ export interface IUser extends Document {
   name: string;
   email: string;
   photo?: string;
-  createdAt: Date;
   password?: string;
   passwordConfirm?: string;
   passwordChangedAt: Date;
@@ -36,48 +35,49 @@ export interface UserModel extends Model<IUser, {}, IUserMethods> {
   // Build static methods here
 }
 
-const schema = new Schema<IUser, UserModel, IUserMethods>({
-  name: {
-    type: String,
-    required: [true, 'Please tell us your name!'],
+const schema = new Schema<IUser, UserModel, IUserMethods>(
+  {
+    name: {
+      type: String,
+      required: [true, 'Please tell us your name!'],
+    },
+    email: {
+      type: String,
+      required: [true, 'Please provide your email!'],
+      unique: true,
+      trim: true,
+      lowercase: true,
+      validate: [isEmail, 'Please provide a valid email!'],
+    },
+    photo: String,
+    password: {
+      type: String,
+      required: [true, 'Please provide a password!'],
+      minlength: 8,
+      select: false,
+    },
+    passwordConfirm: {
+      type: String,
+      required: [true, 'Please confirm your password!'],
+    },
+    passwordChangedAt: Date,
+    passwordResetToken: String,
+    passwordResetExpires: Date,
+    active: {
+      type: Boolean,
+      default: true,
+      select: false,
+    },
+    role: {
+      type: String,
+      enum: UserRoles,
+      default: UserRoles.USER,
+    },
   },
-  email: {
-    type: String,
-    required: [true, 'Please provide your email!'],
-    unique: true,
-    trim: true,
-    lowercase: true,
-    validate: [isEmail, 'Please provide a valid email!'],
-  },
-  photo: String,
-  createdAt: {
-    type: Date,
-    default: Date.now(),
-  },
-  password: {
-    type: String,
-    required: [true, 'Please provide a password!'],
-    minlength: 8,
-    select: false,
-  },
-  passwordConfirm: {
-    type: String,
-    required: [true, 'Please confirm your password!'],
-  },
-  passwordChangedAt: Date,
-  passwordResetToken: String,
-  passwordResetExpires: Date,
-  active: {
-    type: Boolean,
-    default: true,
-    select: false,
-  },
-  role: {
-    type: String,
-    enum: UserRoles,
-    default: UserRoles.USER,
-  },
-});
+  {
+    timestamps: true,
+  }
+);
 
 // ==================Middleware==================
 
