@@ -10,7 +10,7 @@ router.use(authController.protect);
 router
   .route('/')
   .get(playlistController.getAllPlaylists)
-  .post(playlistController.createPlaylist);
+  .post(authController.setCreatedBy, playlistController.createPlaylist);
 
 router
   .route('/:id')

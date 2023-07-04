@@ -14,6 +14,7 @@ router
     authController.protect,
     authController.restrictTo(UserRoles.ADMIN, UserRoles.ARTIST),
     trackController.multerUploadFields,
+    authController.setCreatedBy,
     trackController.validateBeforeUpload,
     trackController.validateDataExistence,
     trackController.uploadCreateToS3,

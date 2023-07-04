@@ -63,10 +63,6 @@ const validateBeforeUpload = asyncWrapper(
       return;
     }
 
-    // also assigning the current user to createdBy
-
-    req.body.createdBy = req.user?.id;
-
     next();
   }
 );

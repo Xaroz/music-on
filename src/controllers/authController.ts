@@ -253,6 +253,18 @@ const restrictTo = (...roles: UserRoles[]) => {
   };
 };
 
+/**
+ * Sets the createdBy field of the request to the actual user in the cookie
+ */
+const setCreatedBy = (
+  req: IRequestWithUser,
+  res: Response,
+  next: NextFunction
+) => {
+  req.body.createdBy = req.user?.id;
+  next();
+};
+
 const authController = {
   signUp,
   login,
@@ -262,6 +274,7 @@ const authController = {
   resetPassword,
   restrictTo,
   protect,
+  setCreatedBy,
 };
 
 export default authController;
