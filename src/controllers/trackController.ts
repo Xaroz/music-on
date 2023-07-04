@@ -40,7 +40,7 @@ const multerUploadFields = multer().fields([
 ]);
 
 const validateBeforeUpload = asyncWrapper(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     const { name, genres, artists } = req.body;
 
     if (!name || !genres || !artists) {
@@ -62,6 +62,10 @@ const validateBeforeUpload = asyncWrapper(
       res.status(400).json({ status: 'fail', error: errors });
       return;
     }
+
+    // also assigning the current user to createdBy
+
+    req.body.createdBy = req.user?.id;
 
     next();
   }
@@ -176,9 +180,9 @@ const getAllTracks = getAllEntities<ITrack>(Track);
 
 const getTrack = getOne<ITrack>(Track);
 
-const updateTrack = updateOne<ITrack>(Track);
+const updateTrack = updateOne<ITrack>(Track, true);
 
-const deleteTrack = deleteOne<ITrack>(Track);
+const deleteTrack = deleteOne<ITrack>(Track, true);
 
 const trackController = {
   createTrack,

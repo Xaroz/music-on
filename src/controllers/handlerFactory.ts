@@ -1,8 +1,17 @@
 import { NextFunction, Request, Response } from 'express';
-import { Model } from 'mongoose';
+import { Document, FilterQuery, Model, Schema } from 'mongoose';
+
+import { IUser, UserRoles } from '../models/userModel';
+
+import { IRequestWithUser } from '../types/request';
 
 import AppError from '../utils/appError';
 import asyncWrapper from '../utils/asyncWrapper';
+
+interface Visibility {
+  createdBy?: Schema.Types.ObjectId;
+  public?: boolean;
+}
 
 export const createOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
   asyncWrapper(
@@ -16,15 +25,32 @@ export const createOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
     }
   );
 
-export const getOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
+export const getOne = <ModelInterface extends Document & Visibility>(
+  ModelEntity: Model<ModelInterface>,
+  checkVisibility?: boolean
+) =>
   asyncWrapper(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const entity: ModelInterface[] | null = await ModelEntity.findById(
+    async (
+      req: IRequestWithUser,
+      res: Response,
+      next: NextFunction
+    ): Promise<void> => {
+      let entity: ModelInterface | null = await ModelEntity.findById(
         req.params.id
       );
 
       if (!entity) {
         return next(new AppError('No entity found with that ID', 404));
+      }
+
+      if (checkVisibility && entity.createdBy) {
+        if (
+          req.user?.role !== UserRoles.ADMIN &&
+          req.user?.id !== entity.createdBy.toString() &&
+          entity.public === false
+        ) {
+          return next(new AppError('No entity found with that ID', 404));
+        } else entity = await entity.populate('createdBy');
       }
 
       res.status(200).json({
@@ -34,17 +60,40 @@ export const getOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
     }
   );
 
-export const updateOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
+export const updateOne = <ModelInterface>(
+  ModelEntity: Model<ModelInterface>,
+  checkOwnership?: boolean
+) =>
   asyncWrapper(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const updatedEntity: ModelInterface[] | null =
-        await ModelEntity.findByIdAndUpdate(req.params.id, req.body, {
-          new: true,
-          runValidators: true,
-        });
+    async (
+      req: IRequestWithUser,
+      res: Response,
+      next: NextFunction
+    ): Promise<void> => {
+      console.log(req.user?.role);
+      const updatedEntity: ModelInterface | null =
+        await ModelEntity.findOneAndUpdate(
+          {
+            _id: req.params.id,
+            ...(checkOwnership &&
+              req.user?.role !== UserRoles.ADMIN && {
+                createdBy: req.user?.id,
+              }),
+          },
+          req.body,
+          {
+            new: true,
+            runValidators: true,
+          }
+        );
 
       if (!updatedEntity) {
-        return next(new AppError('No entity found with that ID', 404));
+        return next(
+          new AppError(
+            'No entity found with that ID or you are not authorized to update it',
+            404
+          )
+        );
       }
 
       res.status(201).json({
@@ -54,14 +103,32 @@ export const updateOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
     }
   );
 
-export const deleteOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
+export const deleteOne = <ModelInterface>(
+  ModelEntity: Model<ModelInterface>,
+  checkOwnership?: boolean
+) =>
   asyncWrapper(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    async (
+      req: IRequestWithUser,
+      res: Response,
+      next: NextFunction
+    ): Promise<void> => {
       const removedEntity: ModelInterface[] | null =
-        await ModelEntity.findByIdAndDelete(req.params.id);
+        await ModelEntity.findOneAndDelete({
+          _id: req.params.id,
+          ...(checkOwnership &&
+            req.user?.role !== UserRoles.ADMIN && {
+              createdBy: req.user?.id,
+            }),
+        });
 
       if (!removedEntity) {
-        return next(new AppError('No entity found with that ID', 404));
+        return next(
+          new AppError(
+            'No entity found with that ID or you are not authorized to delete it',
+            404
+          )
+        );
       }
 
       res.status(204).json({
@@ -72,11 +139,28 @@ export const deleteOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
   );
 
 export const getAllEntities = <ModelInterface>(
-  ModelEntity: Model<ModelInterface>
+  ModelEntity: Model<ModelInterface>,
+  checkVisibility?: boolean
 ) =>
   asyncWrapper(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const entities: ModelInterface[] = await ModelEntity.find();
+    async (
+      req: IRequestWithUser,
+      res: Response,
+      next: NextFunction
+    ): Promise<void> => {
+      let filters: FilterQuery<ModelInterface> | undefined = checkVisibility
+        ? {
+            $or: [
+              {
+                createdBy: req.user?.id,
+              },
+              { public: true },
+            ],
+          }
+        : {};
+
+      const entities: ModelInterface[] = await ModelEntity.find(filters);
+
       res.status(200).json({
         status: 'success',
         results: entities.length,
