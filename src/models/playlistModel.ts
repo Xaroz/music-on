@@ -1,6 +1,8 @@
 import { ModelErrorEnum } from '../constants/error';
 import { Document, model, Query, Schema } from 'mongoose';
 
+import { validateDuplicateData } from '../utils/requestValidation';
+
 export interface IPlaylist extends Document {
   name: string;
   description: string;
@@ -25,12 +27,20 @@ const playlistSchema: Schema<IPlaylist> = new Schema(
       ref: 'User',
       required: [true, 'Playlist must have an owner'],
     },
-    tracks: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Track',
+    tracks: {
+      type: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: 'Track',
+        },
+      ],
+      validate: {
+        validator: function (tracks: Array<Schema.Types.ObjectId>) {
+          return validateDuplicateData(tracks);
+        },
+        message: 'Tracks must be unique',
       },
-    ],
+    },
     public: {
       type: Boolean,
       default: true,

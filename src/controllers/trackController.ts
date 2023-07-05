@@ -88,7 +88,6 @@ const validateBeforeUpload = asyncWrapper(
 const validateDataExistence = asyncWrapper(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     let { genres, artists } = req.body;
-    console.log(genres);
 
     if (genres) {
       const genresExist = await validateEntitiesExistence<IGenre>(

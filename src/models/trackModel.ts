@@ -1,5 +1,7 @@
 import { Document, model, Schema, Query } from 'mongoose';
 
+import { validateDuplicateData } from '../utils/requestValidation';
+
 export interface ITrack extends Document {
   name: string;
   coverImage: string;
@@ -41,11 +43,7 @@ const trackSchema: Schema<ITrack> = new Schema(
       min: [1, 'At least one artist is required'],
       validate: {
         validator: function (artists: Array<Schema.Types.ObjectId>) {
-          const uniqueArtists = [
-            ...new Set(artists.map((artist) => artist.toString())),
-          ];
-
-          return uniqueArtists.length === artists.length;
+          return validateDuplicateData(artists);
         },
         message: 'Artists must be unique',
       },
@@ -59,6 +57,12 @@ const trackSchema: Schema<ITrack> = new Schema(
       ],
       required: [true, 'Genres are required'],
       min: [1, 'At least one genre is required'],
+      validate: {
+        validator: function (genres: Array<Schema.Types.ObjectId>) {
+          return validateDuplicateData(genres);
+        },
+        message: 'Genres must be unique',
+      },
     },
     createdBy: {
       type: Schema.Types.ObjectId,
