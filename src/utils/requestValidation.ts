@@ -16,7 +16,7 @@ export const validateEntitiesExistence = async <ModelInterface>(
 };
 
 /**
- * Check if the array of giving IDs have any duplicates
+ * Check if the array of given IDs have any duplicates
  */
 export const validateDuplicateData = (values: Array<Schema.Types.ObjectId>) => {
   const uniqueValues = [...new Set(values.map((value) => value.toString()))];
