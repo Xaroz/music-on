@@ -7,8 +7,6 @@ const router = express.Router();
 
 router.use(authController.protect);
 
-router.route('/remove-track/:trackId').patch();
-
 router
   .route('/')
   .get(playlistController.getAllPlaylists)
