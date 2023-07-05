@@ -7,6 +7,8 @@ const router = express.Router();
 
 router.use(authController.protect);
 
+router.route('/remove-track/:trackId').patch();
+
 router
   .route('/')
   .get(playlistController.getAllPlaylists)
@@ -17,5 +19,16 @@ router
   .get(playlistController.getPlaylist)
   .patch(playlistController.updatePlaylist)
   .delete(playlistController.deletePlaylist);
+
+router
+  .route('/:id/add-track/:trackId')
+  .patch(playlistController.checkTrackExistence, playlistController.addTrack);
+
+router
+  .route('/:id/remove-track/:trackId')
+  .patch(
+    playlistController.checkTrackExistence,
+    playlistController.removeTrack
+  );
 
 export default router;

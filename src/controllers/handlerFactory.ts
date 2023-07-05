@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { Document, FilterQuery, Model, Schema } from 'mongoose';
+import { Document, FilterQuery, Model, Schema, UpdateQuery } from 'mongoose';
 
 import { IUser, UserRoles } from '../models/userModel';
 
@@ -62,7 +62,8 @@ export const getOne = <ModelInterface extends Document & Visibility>(
 
 export const updateOne = <ModelInterface>(
   ModelEntity: Model<ModelInterface>,
-  checkOwnership?: boolean
+  checkOwnership?: boolean,
+  updateQuery?: UpdateQuery<ModelInterface> | undefined
 ) =>
   asyncWrapper(
     async (
@@ -70,7 +71,6 @@ export const updateOne = <ModelInterface>(
       res: Response,
       next: NextFunction
     ): Promise<void> => {
-      console.log(req.user?.role);
       const updatedEntity: ModelInterface | null =
         await ModelEntity.findOneAndUpdate(
           {
@@ -80,7 +80,7 @@ export const updateOne = <ModelInterface>(
                 createdBy: req.user?.id,
               }),
           },
-          req.body,
+          { ...req.body, ...updateQuery },
           {
             new: true,
             runValidators: true,

@@ -34,10 +34,21 @@ const trackSchema: Schema<ITrack> = new Schema(
         {
           type: Schema.Types.ObjectId,
           ref: 'User',
+          unique: true,
         },
       ],
       required: [true, 'Artists are required'],
       min: [1, 'At least one artist is required'],
+      validate: {
+        validator: function (artists: Array<Schema.Types.ObjectId>) {
+          const uniqueArtists = [
+            ...new Set(artists.map((artist) => artist.toString())),
+          ];
+
+          return uniqueArtists.length === artists.length;
+        },
+        message: 'Artists must be unique',
+      },
     },
     genres: {
       type: [
