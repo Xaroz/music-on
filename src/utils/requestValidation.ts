@@ -1,4 +1,8 @@
-import { Model, Schema } from 'mongoose';
+import { Document, Model, Schema } from 'mongoose';
+
+import { Visibility } from '../controllers/handlerFactory';
+
+import { IUser, UserRoles } from '../models/userModel';
 
 /**
  * Check if the values actually exists within the model
@@ -22,4 +26,29 @@ export const validateDuplicateData = (values: Array<Schema.Types.ObjectId>) => {
   const uniqueValues = [...new Set(values.map((value) => value.toString()))];
 
   return uniqueValues.length === values.length;
+};
+
+/**
+ * Checks if the current user is the creator of the document
+ */
+export const checkDocumentOwner = <
+  ModelInterface extends Document & Visibility
+>(
+  document: ModelInterface,
+  user?: IUser
+) => {
+  const { createdBy } = document;
+  if (!user || !createdBy) return false;
+
+  if (user.role === UserRoles.ADMIN) return true;
+
+  // console.log(createdBy.toString());
+
+  if ('id' in createdBy) {
+    console.log('triggered 1');
+    return user.id === createdBy.id;
+  }
+
+  console.log('outside');
+  return createdBy.toString() === user.id;
 };

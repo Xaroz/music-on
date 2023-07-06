@@ -5,11 +5,13 @@ import { IUser, UserRoles } from '../models/userModel';
 
 import { IRequestWithUser } from '../types/request';
 
+import { checkDocumentOwner } from '../utils/requestValidation';
+
 import AppError from '../utils/appError';
 import asyncWrapper from '../utils/asyncWrapper';
 
-interface Visibility {
-  createdBy?: Schema.Types.ObjectId;
+export interface Visibility {
+  createdBy?: Schema.Types.ObjectId | IUser;
   public?: boolean;
 }
 
@@ -60,7 +62,7 @@ export const getOne = <ModelInterface extends Document & Visibility>(
     }
   );
 
-export const updateOne = <ModelInterface>(
+export const updateOne = <ModelInterface extends Document & Visibility>(
   ModelEntity: Model<ModelInterface>,
   checkOwnership?: boolean,
   updateQuery?: UpdateQuery<ModelInterface> | undefined
@@ -71,34 +73,31 @@ export const updateOne = <ModelInterface>(
       res: Response,
       next: NextFunction
     ): Promise<void> => {
-      const updatedEntity: ModelInterface | null =
-        await ModelEntity.findOneAndUpdate(
-          {
-            _id: req.params.id,
-            ...(checkOwnership &&
-              req.user?.role !== UserRoles.ADMIN && {
-                createdBy: req.user?.id,
-              }),
-          },
-          { ...req.body, ...updateQuery },
-          {
-            new: true,
-            runValidators: true,
-          }
-        );
+      const document: ModelInterface | null = await ModelEntity.findById(
+        req.params.id
+      );
 
-      if (!updatedEntity) {
-        return next(
-          new AppError(
-            'No entity found with that ID or you are not authorized to update it',
-            404
-          )
-        );
+      if (!document) {
+        return next(new AppError('No entity found with that ID ', 404));
       }
+
+      if (checkOwnership) {
+        const isOwner = checkDocumentOwner(document, req.user);
+
+        if (!isOwner)
+          return next(
+            new AppError('You are not authorized to update this document', 401)
+          );
+      }
+
+      const updateDocument = document.updateOne(
+        { ...req.body, updateQuery },
+        { runValidators: true, new: true }
+      );
 
       res.status(201).json({
         status: 'success',
-        data: updatedEntity,
+        data: updateDocument,
       });
     }
   );

@@ -63,7 +63,7 @@ const populateFind = function <T extends Document>(this: Query<T[], T>) {
 
 const populateFindOne = function <T extends Document>(this: Query<T[], T>) {
   this.populate({
-    path: 'tracks',
+    path: 'tracks createdBy',
     // This is not working for some reason
     // select: '-__v',
   });
