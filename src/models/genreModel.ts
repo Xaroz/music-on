@@ -15,7 +15,7 @@ const genreSchema: Schema<IGenre> = new Schema(
     description: {
       type: String,
       required: [true, ModelErrorEnum.REQUIRED_DESCRIPTION],
-      minlength: [5, 'Atleast 5 characters are required for description'],
+      minlength: [5, 'At least 5 characters are required for description'],
     },
   },
   {

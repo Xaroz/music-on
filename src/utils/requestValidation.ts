@@ -29,7 +29,8 @@ export const validateDuplicateData = (values: Array<Schema.Types.ObjectId>) => {
 };
 
 /**
- * Checks if the current user is the creator of the document
+ * Checks if the current user is the creator of the document.
+ * Always returns true if current user is an admin
  */
 export const checkDocumentOwner = <
   ModelInterface extends Document & Visibility
@@ -47,4 +48,23 @@ export const checkDocumentOwner = <
   }
 
   return createdBy.toString() === user.id;
+};
+
+/**
+ * Returns `true` if current user is an admin or the owner of the document.
+ * Otherwise returns `true` only if document is public
+ */
+export const checkDocumentVisibility = <
+  ModelInterface extends Document & Visibility
+>(
+  document: ModelInterface,
+  user?: IUser
+) => {
+  const isOwner = checkDocumentOwner(document, user);
+
+  if (isOwner) return true;
+
+  if (document.public === false) return false;
+
+  return true;
 };

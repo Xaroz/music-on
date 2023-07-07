@@ -5,7 +5,10 @@ import { IUser, UserRoles } from '../models/userModel';
 
 import { IRequestWithUser } from '../types/request';
 
-import { checkDocumentOwner } from '../utils/requestValidation';
+import {
+  checkDocumentOwner,
+  checkDocumentVisibility,
+} from '../utils/requestValidation';
 
 import AppError from '../utils/appError';
 import asyncWrapper from '../utils/asyncWrapper';
@@ -46,13 +49,12 @@ export const getOne = <ModelInterface extends Document & Visibility>(
       }
 
       if (checkVisibility && entity.createdBy) {
-        if (
-          req.user?.role !== UserRoles.ADMIN &&
-          req.user?.id !== entity.createdBy.toString() &&
-          entity.public === false
-        ) {
-          return next(new AppError('No entity found with that ID', 404));
-        } else entity = await entity.populate('createdBy');
+        const isDocumentVisible = checkDocumentVisibility(entity, req.user);
+
+        if (!isDocumentVisible)
+          return next(
+            new AppError('You are not authorized to view this document', 401)
+          );
       }
 
       res.status(200).json({
