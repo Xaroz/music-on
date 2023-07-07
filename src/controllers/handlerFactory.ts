@@ -90,19 +90,20 @@ export const updateOne = <ModelInterface extends Document & Visibility>(
           );
       }
 
-      const updateDocument = document.updateOne(
-        { ...req.body, updateQuery },
+      const updatedDocument = await ModelEntity.findByIdAndUpdate(
+        req.params.id,
+        { ...req.body, ...updateQuery },
         { runValidators: true, new: true }
       );
 
       res.status(201).json({
         status: 'success',
-        data: updateDocument,
+        data: updatedDocument,
       });
     }
   );
 
-export const deleteOne = <ModelInterface>(
+export const deleteOne = <ModelInterface extends Document & Visibility>(
   ModelEntity: Model<ModelInterface>,
   checkOwnership?: boolean
 ) =>
@@ -112,23 +113,24 @@ export const deleteOne = <ModelInterface>(
       res: Response,
       next: NextFunction
     ): Promise<void> => {
-      const removedEntity: ModelInterface[] | null =
-        await ModelEntity.findOneAndDelete({
-          _id: req.params.id,
-          ...(checkOwnership &&
-            req.user?.role !== UserRoles.ADMIN && {
-              createdBy: req.user?.id,
-            }),
-        });
+      const document: ModelInterface | null = await ModelEntity.findById(
+        req.params.id
+      );
 
-      if (!removedEntity) {
-        return next(
-          new AppError(
-            'No entity found with that ID or you are not authorized to delete it',
-            404
-          )
-        );
+      if (!document) {
+        return next(new AppError('No entity found with that ID', 404));
       }
+
+      if (checkOwnership) {
+        const isOwner = checkDocumentOwner(document, req.user);
+
+        if (!isOwner)
+          return next(
+            new AppError('You are not authorized to delete this document', 401)
+          );
+      }
+
+      await document.deleteOne();
 
       res.status(204).json({
         status: 'success',

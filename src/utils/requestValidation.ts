@@ -42,13 +42,9 @@ export const checkDocumentOwner = <
 
   if (user.role === UserRoles.ADMIN) return true;
 
-  // console.log(createdBy.toString());
-
-  if ('id' in createdBy) {
-    console.log('triggered 1');
-    return user.id === createdBy.id;
+  if ('email' in createdBy) {
+    return user.id === createdBy.id.toString();
   }
 
-  console.log('outside');
   return createdBy.toString() === user.id;
 };
