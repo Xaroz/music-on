@@ -21,11 +21,11 @@ export interface Visibility {
 export const createOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
   asyncWrapper(
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const entity: ModelInterface = await ModelEntity.create(req.body);
+      const document: ModelInterface = await ModelEntity.create(req.body);
 
       res.status(201).json({
         status: 'success',
-        data: entity,
+        data: document,
       });
     }
   );
@@ -40,16 +40,16 @@ export const getOne = <ModelInterface extends Document & Visibility>(
       res: Response,
       next: NextFunction
     ): Promise<void> => {
-      let entity: ModelInterface | null = await ModelEntity.findById(
+      let document: ModelInterface | null = await ModelEntity.findById(
         req.params.id
       );
 
-      if (!entity) {
-        return next(new AppError('No entity found with that ID', 404));
+      if (!document) {
+        return next(new AppError('No document found with that ID', 404));
       }
 
-      if (checkVisibility && entity.createdBy) {
-        const isDocumentVisible = checkDocumentVisibility(entity, req.user);
+      if (checkVisibility && document.createdBy) {
+        const isDocumentVisible = checkDocumentVisibility(document, req.user);
 
         if (!isDocumentVisible)
           return next(
@@ -59,7 +59,7 @@ export const getOne = <ModelInterface extends Document & Visibility>(
 
       res.status(200).json({
         status: 'success',
-        data: entity,
+        data: document,
       });
     }
   );
@@ -80,7 +80,7 @@ export const updateOne = <ModelInterface extends Document & Visibility>(
       );
 
       if (!document) {
-        return next(new AppError('No entity found with that ID ', 404));
+        return next(new AppError('No document found with that ID ', 404));
       }
 
       if (checkOwnership) {
@@ -120,7 +120,7 @@ export const deleteOne = <ModelInterface extends Document & Visibility>(
       );
 
       if (!document) {
-        return next(new AppError('No entity found with that ID', 404));
+        return next(new AppError('No document found with that ID', 404));
       }
 
       if (checkOwnership) {
@@ -162,12 +162,12 @@ export const getAllEntities = <ModelInterface>(
           }
         : {};
 
-      const entities: ModelInterface[] = await ModelEntity.find(filters);
+      const documents: ModelInterface[] = await ModelEntity.find(filters);
 
       res.status(200).json({
         status: 'success',
-        results: entities.length,
-        data: entities,
+        results: documents.length,
+        data: documents,
       });
     }
   );
