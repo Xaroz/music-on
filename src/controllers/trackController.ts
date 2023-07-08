@@ -39,8 +39,26 @@ const multerUploadFields = multer().fields([
   { name: 'url', maxCount: 1 },
 ]);
 
+// Since we are using form-data we have to make sure that the value is
+// an array otherwise just convert it to one
+const convertToArray = asyncWrapper(
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
+    let { genres, artists } = req.body;
+
+    if (genres) {
+      if (!Array.isArray(genres)) req.body.genres = [genres];
+    }
+
+    if (artists) {
+      if (!Array.isArray(artists)) req.body.artists = [artists];
+    }
+
+    next();
+  }
+);
+
 const validateBeforeUpload = asyncWrapper(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     const { name, genres, artists } = req.body;
 
     if (!name || !genres || !artists) {
@@ -71,12 +89,7 @@ const validateDataExistence = asyncWrapper(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     let { genres, artists } = req.body;
 
-    // Since we are using form-data we have to make sure that the value is
-    // an array otherwise just convert it to one
-
     if (genres) {
-      if (!Array.isArray(genres)) genres = [genres];
-
       const genresExist = await validateEntitiesExistence<IGenre>(
         Genre,
         genres
@@ -85,8 +98,6 @@ const validateDataExistence = asyncWrapper(
     }
 
     if (artists) {
-      if (!Array.isArray(artists)) artists = [artists];
-
       const artistsExist = await validateEntitiesExistence<IUser>(
         User,
         artists
@@ -176,9 +187,9 @@ const getAllTracks = getAllEntities<ITrack>(Track);
 
 const getTrack = getOne<ITrack>(Track);
 
-const updateTrack = updateOne<ITrack>(Track);
+const updateTrack = updateOne<ITrack>(Track, true);
 
-const deleteTrack = deleteOne<ITrack>(Track);
+const deleteTrack = deleteOne<ITrack>(Track, true);
 
 const trackController = {
   createTrack,
@@ -191,6 +202,7 @@ const trackController = {
   uploadCreateToS3,
   uploadPatchToS3,
   multerUploadFields,
+  convertToArray,
 };
 
 export default trackController;

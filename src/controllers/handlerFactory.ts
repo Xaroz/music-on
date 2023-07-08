@@ -1,68 +1,138 @@
 import { NextFunction, Request, Response } from 'express';
-import { Model } from 'mongoose';
+import { Document, FilterQuery, Model, Schema, UpdateQuery } from 'mongoose';
+
+import { IUser, UserRoles } from '../models/userModel';
+
+import { IRequestWithUser } from '../types/request';
+
+import {
+  checkDocumentOwner,
+  checkDocumentVisibility,
+} from '../utils/requestValidation';
 
 import AppError from '../utils/appError';
 import asyncWrapper from '../utils/asyncWrapper';
 
+export interface Visibility {
+  createdBy?: Schema.Types.ObjectId | IUser;
+  public?: boolean;
+}
+
 export const createOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
   asyncWrapper(
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const entity: ModelInterface = await ModelEntity.create(req.body);
+      const document: ModelInterface = await ModelEntity.create(req.body);
 
       res.status(201).json({
         status: 'success',
-        data: entity,
+        data: document,
       });
     }
   );
 
-export const getOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
+export const getOne = <ModelInterface extends Document & Visibility>(
+  ModelEntity: Model<ModelInterface>,
+  checkVisibility?: boolean
+) =>
   asyncWrapper(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const entity: ModelInterface[] | null = await ModelEntity.findById(
+    async (
+      req: IRequestWithUser,
+      res: Response,
+      next: NextFunction
+    ): Promise<void> => {
+      let document: ModelInterface | null = await ModelEntity.findById(
         req.params.id
       );
 
-      if (!entity) {
-        return next(new AppError('No entity found with that ID', 404));
+      if (!document) {
+        return next(new AppError('No document found with that ID', 404));
+      }
+
+      if (checkVisibility && document.createdBy) {
+        const isDocumentVisible = checkDocumentVisibility(document, req.user);
+
+        if (!isDocumentVisible)
+          return next(
+            new AppError('You are not authorized to view this document', 401)
+          );
       }
 
       res.status(200).json({
         status: 'success',
-        data: entity,
+        data: document,
       });
     }
   );
 
-export const updateOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
+export const updateOne = <ModelInterface extends Document & Visibility>(
+  ModelEntity: Model<ModelInterface>,
+  checkOwnership?: boolean,
+  updateQuery?: UpdateQuery<ModelInterface> | undefined
+) =>
   asyncWrapper(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const updatedEntity: ModelInterface[] | null =
-        await ModelEntity.findByIdAndUpdate(req.params.id, req.body, {
-          new: true,
-          runValidators: true,
-        });
+    async (
+      req: IRequestWithUser,
+      res: Response,
+      next: NextFunction
+    ): Promise<void> => {
+      const document: ModelInterface | null = await ModelEntity.findById(
+        req.params.id
+      );
 
-      if (!updatedEntity) {
-        return next(new AppError('No entity found with that ID', 404));
+      if (!document) {
+        return next(new AppError('No document found with that ID ', 404));
       }
+
+      if (checkOwnership) {
+        const isOwner = checkDocumentOwner(document, req.user);
+
+        if (!isOwner)
+          return next(
+            new AppError('You are not authorized to update this document', 401)
+          );
+      }
+
+      const updatedDocument = await ModelEntity.findByIdAndUpdate(
+        req.params.id,
+        { ...req.body, ...updateQuery },
+        { runValidators: true, new: true }
+      );
 
       res.status(201).json({
         status: 'success',
-        data: updatedEntity,
+        data: updatedDocument,
       });
     }
   );
 
-export const deleteOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
+export const deleteOne = <ModelInterface extends Document & Visibility>(
+  ModelEntity: Model<ModelInterface>,
+  checkOwnership?: boolean
+) =>
   asyncWrapper(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const removedEntity: ModelInterface[] | null =
-        await ModelEntity.findByIdAndDelete(req.params.id);
+    async (
+      req: IRequestWithUser,
+      res: Response,
+      next: NextFunction
+    ): Promise<void> => {
+      const document: ModelInterface | null = await ModelEntity.findById(
+        req.params.id
+      );
 
-      if (!removedEntity) {
-        return next(new AppError('No entity found with that ID', 404));
+      if (!document) {
+        return next(new AppError('No document found with that ID', 404));
       }
+
+      if (checkOwnership) {
+        const isOwner = checkDocumentOwner(document, req.user);
+
+        if (!isOwner)
+          return next(
+            new AppError('You are not authorized to delete this document', 401)
+          );
+      }
+
+      await document.deleteOne();
 
       res.status(204).json({
         status: 'success',
@@ -72,15 +142,32 @@ export const deleteOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
   );
 
 export const getAllEntities = <ModelInterface>(
-  ModelEntity: Model<ModelInterface>
+  ModelEntity: Model<ModelInterface>,
+  checkVisibility?: boolean
 ) =>
   asyncWrapper(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const entities: ModelInterface[] = await ModelEntity.find();
+    async (
+      req: IRequestWithUser,
+      res: Response,
+      next: NextFunction
+    ): Promise<void> => {
+      let filters: FilterQuery<ModelInterface> | undefined = checkVisibility
+        ? {
+            $or: [
+              {
+                createdBy: req.user?.id,
+              },
+              { public: true },
+            ],
+          }
+        : {};
+
+      const documents: ModelInterface[] = await ModelEntity.find(filters);
+
       res.status(200).json({
         status: 'success',
-        results: entities.length,
-        data: entities,
+        results: documents.length,
+        data: documents,
       });
     }
   );

@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 
 import genreRouter from './routes/genreRoutes';
 import trackRouter from './routes/trackRoutes';
+import playlistRouter from './routes/playlistRoutes';
 import userRouter from './routes/userRoutes';
 
 import AppError from './utils/appError';
@@ -25,6 +26,7 @@ app.use(cookieParser());
 app.use('/api/v1/tracks', trackRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/genres', genreRouter);
+app.use('/api/v1/playlists', playlistRouter);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
