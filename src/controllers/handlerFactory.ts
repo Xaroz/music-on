@@ -1,9 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { Document, FilterQuery, Model, Schema, UpdateQuery } from 'mongoose';
 
-import { IUser, UserRoles } from '../models/userModel';
-
-import { IRequestWithUser } from '../types/request';
+import { IRequestWithUser, Visibility } from '../types/request';
 
 import {
   checkDocumentOwner,
@@ -11,12 +9,8 @@ import {
 } from '../utils/requestValidation';
 
 import AppError from '../utils/appError';
+import APIFeatures, { RequestQueryString } from '../utils/apiFeatures';
 import asyncWrapper from '../utils/asyncWrapper';
-
-export interface Visibility {
-  createdBy?: Schema.Types.ObjectId | IUser;
-  public?: boolean;
-}
 
 export const createOne = <ModelInterface>(ModelEntity: Model<ModelInterface>) =>
   asyncWrapper(
@@ -141,7 +135,7 @@ export const deleteOne = <ModelInterface extends Document & Visibility>(
     }
   );
 
-export const getAllEntities = <ModelInterface>(
+export const getAllEntities = <ModelInterface extends Document & Visibility>(
   ModelEntity: Model<ModelInterface>,
   checkVisibility?: boolean
 ) =>
@@ -161,12 +155,23 @@ export const getAllEntities = <ModelInterface>(
             ],
           }
         : {};
+      const query = req.query as RequestQueryString;
 
-      const documents: ModelInterface[] = await ModelEntity.find(filters);
+      const features = new APIFeatures(ModelEntity, query)
+        .filter()
+        .sort()
+        .select()
+        .paginate();
+
+      const documents: ModelInterface[] = await features.query;
+      const totalDocuments = await ModelEntity.countDocuments(
+        features.query.getFilter()
+      );
 
       res.status(200).json({
         status: 'success',
         results: documents.length,
+        totalDocuments,
         data: documents,
       });
     }
