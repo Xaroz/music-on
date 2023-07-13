@@ -1,8 +1,8 @@
 import { Document, Model, Schema } from 'mongoose';
 
-import { Visibility } from '../controllers/handlerFactory';
-
 import { IUser, UserRoles } from '../models/userModel';
+
+import { Visibility } from '../types/request';
 
 /**
  * Check if the values actually exists within the model
