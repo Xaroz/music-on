@@ -10,7 +10,7 @@
 
 ## Description
 
-The Music On API main objective is to allow an easier and complete solution for managing music resources.Currently the main features of the API are:
+The Music On API main objective is to allow an easier and complete solution for managing music resources. Currently the main features of the project are:
 1. Getting and uploading tracks
 2. Adding tracks to playlists
 3. Becoming an artist to upload music
