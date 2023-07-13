@@ -171,7 +171,7 @@ export const getAllEntities = <ModelInterface extends Document & Visibility>(
       res.status(200).json({
         status: 'success',
         results: documents.length,
-        totalDocuments,
+        total: totalDocuments,
         data: documents,
       });
     }
