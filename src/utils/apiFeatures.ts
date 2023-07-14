@@ -21,7 +21,7 @@ export default class APIFeatures<ModelInterface extends Document & Visibility> {
   filter() {
     const queryObject = { ...this.queryString };
 
-    const excludedFields = ['page', 'sort', 'limit', 'fields'];
+    const excludedFields = ['page', 'sort', 'limit', 'fields', 'search'];
     excludedFields.forEach((el) => delete queryObject[el]);
 
     let queryStr = JSON.stringify(queryObject);
@@ -61,6 +61,14 @@ export default class APIFeatures<ModelInterface extends Document & Visibility> {
 
     this.query = this.query.skip(skip).limit(limit);
 
+    return this;
+  }
+
+  search() {
+    if (this.queryString.search) {
+      const searchBy = this.queryString.search;
+      this.query = this.query.find({"name": {"$regex": searchBy as string, "$options": "i"}});
+    }
     return this;
   }
 }

@@ -158,6 +158,7 @@ export const getAllEntities = <ModelInterface extends Document & Visibility>(
       const query = req.query as RequestQueryString;
 
       const features = new APIFeatures(ModelEntity, query)
+        .search()
         .filter()
         .sort()
         .select()
