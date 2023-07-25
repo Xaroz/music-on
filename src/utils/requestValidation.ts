@@ -39,9 +39,11 @@ export const checkDocumentOwner = <
   user?: IUser
 ) => {
   const { createdBy } = document;
-  if (!user || !createdBy) return false;
 
+  if (!user) return false;
   if (user.role === UserRoles.ADMIN) return true;
+
+  if (!createdBy) return false;
 
   if ('email' in createdBy) {
     return user.id === createdBy.id.toString();

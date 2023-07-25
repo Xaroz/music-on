@@ -35,19 +35,21 @@ export const uploadFilesToS3 = async (
 };
 
 export const removesFilesFromS3 = async (urls: string[]) => {
-  const keys: AWS.S3.ObjectIdentifierList = urls
-    .filter((url) => {
+  const keys: AWS.S3.ObjectIdentifierList = urls.reduce(
+    (prevValue: AWS.S3.ObjectIdentifierList, url) => {
       const { pathname } = new URL(url);
-      return pathname.split('/').length > 1;
-    })
-    .map((url) => {
-      const { pathname } = new URL(url);
+      const paths = pathname.split('/');
 
-      const path = pathname.split('/')[1];
+      if (paths.length < 2) return prevValue;
+
+      const key = paths[1];
       // Object key may have spaces or unicode non-ASCII characters
-      const srcKey = decodeURIComponent(path.replace(/\+/g, ' '));
-      return { Key: srcKey };
-    });
+      const srcKey = decodeURIComponent(key.replace(/\+/g, ' '));
+
+      return [...prevValue, { Key: srcKey }];
+    },
+    []
+  );
 
   try {
     const res = await s3
