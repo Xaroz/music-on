@@ -33,3 +33,33 @@ export const uploadFilesToS3 = async (
     return undefined;
   }
 };
+
+export const removesFilesFromS3 = async (urls: string[]) => {
+  const keys: AWS.S3.ObjectIdentifierList = urls
+    .filter((url) => {
+      const { pathname } = new URL(url);
+      return pathname.split('/').length > 1;
+    })
+    .map((url) => {
+      const { pathname } = new URL(url);
+
+      const path = pathname.split('/')[1];
+      // Object key may have spaces or unicode non-ASCII characters
+      const srcKey = decodeURIComponent(path.replace(/\+/g, ' '));
+      return { Key: srcKey };
+    });
+
+  try {
+    const res = await s3
+      .deleteObjects({
+        Bucket: process.env.AWS_BUCKET_NAME!,
+        Delete: {
+          Objects: keys,
+        },
+      })
+      .promise();
+    return res;
+  } catch (err) {
+    return err;
+  }
+};

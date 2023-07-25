@@ -24,9 +24,16 @@ import { IRequestWithUser } from '../types/request';
 import AppError from '../utils/appError';
 import asyncWrapper from '../utils/asyncWrapper';
 import { isNonNullable } from '../utils/base';
-import { getS3Params, uploadFilesToS3 } from '../utils/uploadFile';
+import {
+  getS3Params,
+  removesFilesFromS3,
+  uploadFilesToS3,
+} from '../utils/fileManager';
 import { validateFile } from '../utils/validateFile';
-import { validateEntitiesExistence } from '../utils/requestValidation';
+import {
+  checkDocumentOwner,
+  validateEntitiesExistence,
+} from '../utils/requestValidation';
 
 const getErrorMessage = (
   errors: Array<Error.ValidationError | null>
@@ -181,15 +188,69 @@ const uploadPatchToS3 = asyncWrapper(
   }
 );
 
+const checkTrackOwner = asyncWrapper(
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
+    const track = await Track.findById(req.params.id);
+
+    if (!track) {
+      return next(new AppError('No Track found with that ID ', 404));
+    }
+
+    const isOwner = checkDocumentOwner(track, req.user);
+
+    if (!isOwner)
+      return next(
+        new AppError('You are not authorized to update this document', 401)
+      );
+
+    req.track = track;
+
+    next();
+  }
+);
+
 const createTrack = createOne<ITrack>(Track);
 
 const getAllTracks = getAllEntities<ITrack>(Track);
 
 const getTrack = getOne<ITrack>(Track);
 
-const updateTrack = updateOne<ITrack>(Track, true);
+const updateTrack = asyncWrapper(
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
+    let deleteUrls: string[] = [];
+    const track = req.track;
 
-const deleteTrack = deleteOne<ITrack>(Track, true);
+    if (req.body.coverImage && track) deleteUrls.push(track.coverImage);
+    if (req.body.url && track) deleteUrls.push(track.url);
+
+    if (deleteUrls.length > 0) await removesFilesFromS3(deleteUrls);
+
+    const updatedTrack = await Track.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { runValidators: true, new: true }
+    );
+
+    res.status(201).json({
+      status: 'success',
+      data: updatedTrack,
+    });
+  }
+);
+
+const deleteTrack = asyncWrapper(
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
+    const track = req.track;
+    if (track) await removesFilesFromS3([track.coverImage, track.url]);
+
+    await Track.findByIdAndRemove(req.params.id);
+
+    res.status(204).json({
+      status: 'success',
+      data: null,
+    });
+  }
+);
 
 const trackController = {
   createTrack,
@@ -203,6 +264,7 @@ const trackController = {
   uploadPatchToS3,
   multerUploadFields,
   convertToArray,
+  checkTrackOwner,
 };
 
 export default trackController;
