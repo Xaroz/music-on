@@ -229,7 +229,6 @@ const updateTrack = asyncWrapper(
     });
 
     // Deleting old files from AWS S3
-
     let deleteUrls: string[] = [];
     const track = req.track;
 
@@ -250,7 +249,6 @@ const deleteTrack = asyncWrapper(
     });
 
     // Deleting old files from AWS S3
-
     const track = req.track;
     if (track) await removesFilesFromS3([track.coverImage, track.url]);
   }
