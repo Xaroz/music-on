@@ -217,14 +217,6 @@ const getTrack = getOne<ITrack>(Track);
 
 const updateTrack = asyncWrapper(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
-    let deleteUrls: string[] = [];
-    const track = req.track;
-
-    if (req.body.coverImage && track) deleteUrls.push(track.coverImage);
-    if (req.body.url && track) deleteUrls.push(track.url);
-
-    if (deleteUrls.length > 0) await removesFilesFromS3(deleteUrls);
-
     const updatedTrack = await Track.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -235,20 +227,32 @@ const updateTrack = asyncWrapper(
       status: 'success',
       data: updatedTrack,
     });
+
+    // Deleting old files from AWS S3
+
+    let deleteUrls: string[] = [];
+    const track = req.track;
+
+    if (req.body.coverImage && track) deleteUrls.push(track.coverImage);
+    if (req.body.url && track) deleteUrls.push(track.url);
+
+    if (deleteUrls.length > 0) await removesFilesFromS3(deleteUrls);
   }
 );
 
 const deleteTrack = asyncWrapper(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
-    const track = req.track;
-    if (track) await removesFilesFromS3([track.coverImage, track.url]);
-
     await Track.findByIdAndRemove(req.params.id);
 
     res.status(204).json({
       status: 'success',
       data: null,
     });
+
+    // Deleting old files from AWS S3
+
+    const track = req.track;
+    if (track) await removesFilesFromS3([track.coverImage, track.url]);
   }
 );
 
