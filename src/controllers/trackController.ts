@@ -223,19 +223,18 @@ const updateTrack = asyncWrapper(
       { runValidators: true, new: true }
     );
 
-    res.status(201).json({
-      status: 'success',
-      data: updatedTrack,
-    });
-
     // Deleting old files from AWS S3
     let deleteUrls: string[] = [];
     const track = req.track;
 
     if (req.body.coverImage && track) deleteUrls.push(track.coverImage);
     if (req.body.url && track) deleteUrls.push(track.url);
-
     if (deleteUrls.length > 0) await removesFilesFromS3(deleteUrls);
+
+    res.status(201).json({
+      status: 'success',
+      data: updatedTrack,
+    });
   }
 );
 
@@ -243,14 +242,14 @@ const deleteTrack = asyncWrapper(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     await Track.findByIdAndRemove(req.params.id);
 
+    // Deleting old files from AWS S3
+    const track = req.track;
+    if (track) await removesFilesFromS3([track.coverImage, track.url]);
+
     res.status(204).json({
       status: 'success',
       data: null,
     });
-
-    // Deleting old files from AWS S3
-    const track = req.track;
-    if (track) await removesFilesFromS3([track.coverImage, track.url]);
   }
 );
 
