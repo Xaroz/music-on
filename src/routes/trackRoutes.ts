@@ -30,12 +30,14 @@ router
     authController.restrictTo(UserRoles.ADMIN, UserRoles.ARTIST),
     trackController.multerUploadFields,
     trackController.validateDataExistence,
+    trackController.checkTrackOwner,
     trackController.uploadPatchToS3,
     trackController.updateTrack
   )
   .delete(
     authController.protect,
     authController.restrictTo(UserRoles.ADMIN, UserRoles.ARTIST),
+    trackController.checkTrackOwner,
     trackController.deleteTrack
   );
 
